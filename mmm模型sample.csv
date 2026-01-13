@@ -1,4 +1,4 @@
-id,geo,date,advance,totalSessions,organicSearchSessions,channel0_impressions,channel1_impressions,channel2_impressions,channel3_impressions,channel4_impressions,channel0_spend,channel1_spend,channel2_spend,channel3_spend,channel4_spend
+id,geo,time,advance,totalSessions,organicSearchSessions,channel0_impressions,channel1_impressions,channel2_impressions,channel3_impressions,channel4_impressions,channel0_spend,channel1_spend,channel2_spend,channel3_spend,channel4_spend
 1,National,2025-01-01,660,133308,48117,214499,235775,223680,205374,246810,140000,140000,70000,70000,50000
 2,National,2025-01-02,721,143977,62820,202999,235404,229874,226576,225728,140000,140000,70000,70000,50000
 3,National,2025-01-03,812,146332,62446,214712,228404,219073,225260,232057,140000,140000,70000,70000,50000
@@ -364,3 +364,4 @@ id,geo,date,advance,totalSessions,organicSearchSessions,channel0_impressions,cha
 363,National,2025-12-29,600,176913,63131,237563,219349,201021,224097,215442,140000,140000,70000,70000,50000
 364,National,2025-12-30,561,169006,57939,208923,204390,239684,244660,209018,140000,140000,70000,70000,50000
 365,National,2025-12-31,604,140104,48564,246857,200929,237909,232139,241536,140000,140000,70000,70000,50000
+
