@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Meridian MMM 分析報告 - Geo-level 22 縣市</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --primary: #1e40af;
+    --accent:  #3b82f6;
+    --bg:      #f8fafc;
+    --card:    #ffffff;
+    --border:  #e2e8f0;
+    --text:    #1e293b;
+    --muted:   #64748b;
+    --green:   #16a34a;
+    --red:     #dc2626;
+    --yellow:  #d97706;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  .header { background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #2563eb 100%);
+             color: white; padding: 40px 32px; }
+  .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  .header p  { font-size: 14px; opacity: 0.85; }
+  .header .meta-row { display: flex; gap: 32px; margin-top: 20px; flex-wrap: wrap; }
+  .header .meta-item { background: rgba(255,255,255,0.15); border-radius: 8px;
+                        padding: 10px 18px; font-size: 13px; }
+  .header .meta-item strong { display: block; font-size: 20px; font-weight: 700; }
+  nav { background: white; border-bottom: 1px solid var(--border); padding: 0 32px;
+         position: sticky; top: 0; z-index: 100; display: flex; gap: 0; overflow-x: auto; }
+  nav a { padding: 14px 20px; font-size: 13px; font-weight: 500; color: var(--muted);
+           text-decoration: none; white-space: nowrap; border-bottom: 2px solid transparent; }
+  nav a:hover { color: var(--primary); }
+  nav a.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .container { max-width: 1400px; margin: 0 auto; padding: 32px; }
+  .section { margin-bottom: 48px; }
+  .section-title { font-size: 20px; font-weight: 700; color: var(--primary);
+                    margin-bottom: 24px; padding-bottom: 10px;
+                    border-bottom: 2px solid var(--accent); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .card { background: var(--card); border-radius: 12px; padding: 20px 24px;
+           box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid var(--border); }
+  .card .label { font-size: 12px; color: var(--muted); text-transform: uppercase;
+                  letter-spacing: 0.05em; margin-bottom: 8px; }
+  .card .value { font-size: 28px; font-weight: 700; color: var(--primary); }
+  .card .sub   { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+  @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  .chart-box { background: var(--card); border-radius: 12px; padding: 24px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid var(--border); }
+  .chart-box h3 { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+  .chart-box .source { font-size: 11px; color: var(--muted); margin-top: 8px; text-align: right; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f1f5f9; padding: 10px 14px; text-align: left; font-weight: 600;
+        font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em;
+        color: var(--muted); border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: #f8fafc; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px;
+            font-size: 11px; font-weight: 600; }
+  .badge-green  { background: #dcfce7; color: #15803d; }
+  .badge-red    { background: #fee2e2; color: #b91c1c; }
+  .badge-yellow { background: #fef9c3; color: #a16207; }
+  .bar-bg { background: #e2e8f0; border-radius: 4px; height: 8px; width: 100%; }
+  .bar-fill { height: 8px; border-radius: 4px; }
+  .geo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .geo-card { background: var(--card); border-radius: 10px; padding: 16px 20px;
+               border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+  .geo-card .city-name { font-size: 15px; font-weight: 700; margin-bottom: 10px; color: var(--primary); }
+  .geo-card .ch-row { display: flex; justify-content: space-between; align-items: center;
+                       padding: 4px 0; font-size: 12px; border-bottom: 1px solid #f1f5f9; }
+  .geo-card .ch-row:last-child { border-bottom: none; }
+  .insight-box { background: linear-gradient(135deg, #eff6ff, #dbeafe);
+                  border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px 24px;
+                  margin-bottom: 16px; }
+  .insight-box h4 { font-size: 14px; font-weight: 700; color: #1e40af; margin-bottom: 8px; }
+  .insight-box p  { font-size: 13px; color: #1e3a8a; line-height: 1.6; }
+  footer { text-align: center; padding: 32px; font-size: 12px; color: var(--muted);
+            border-top: 1px solid var(--border); margin-top: 48px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>📊 Google Meridian MMM 分析報告</h1>
+  <p>Geo-level 模型 · 22 縣市 · 2026-03-01 ~ 2026-04-30</p>
+  <div class="meta-row">
+    <div class="meta-item"><strong>22</strong>縣市</div>
+    <div class="meta-item"><strong>61</strong>天</div>
+    <div class="meta-item"><strong>25</strong>媒體通路</div>
+    <div class="meta-item"><strong>-956147.325</strong>R²</div>
+    <div class="meta-item"><strong>18.9K</strong>總 KPI</div>
+    <div class="meta-item"><strong>309.8</strong>日均 KPI（全國）</div>
+  </div>
+</div>
+
+<!-- Nav -->
+<nav>
+  <a href="#overview" class="active">總覽</a>
+  <a href="#contribution">貢獻度</a>
+  <a href="#roi">ROI</a>
+  <a href="#efficiency">效率分析</a>
+  <a href="#geo">縣市分析</a>
+  <a href="#timeseries">時間序列</a>
+  <a href="#detail">通路明細</a>
+  <a href="#insights">洞察建議</a>
+</nav>
+
+<div class="container">
+
+<!-- ① 總覽 -->
+<div class="section" id="overview">
+  <div class="section-title">① 模型總覽</div>
+  <div class="cards">
+    <div class="card">
+      <div class="label">模型類型</div>
+      <div class="value" style="font-size:18px">Geo-level</div>
+      <div class="sub">22 縣市 Panel Data</div>
+    </div>
+    <div class="card">
+      <div class="label">R²（模型擬合度）</div>
+      <div class="value">-956147.325</div>
+      <div class="sub">越接近 1 越好</div>
+    </div>
+    <div class="card">
+      <div class="label">分析期間</div>
+      <div class="value" style="font-size:16px">2026-03</div>
+      <div class="sub">~ 2026-04（61 天）</div>
+    </div>
+    <div class="card">
+      <div class="label">總 KPI（rakuyaPurchases）</div>
+      <div class="value">18.9K</div>
+      <div class="sub">日均全國 309.8</div>
+    </div>
+    <div class="card">
+      <div class="label">媒體通路數</div>
+      <div class="value">25</div>
+      <div class="sub">spend 結尾欄位各為一通路</div>
+    </div>
+    <div class="card">
+      <div class="label">MCMC 設定</div>
+      <div class="value" style="font-size:16px">4 chains</div>
+      <div class="sub">keep=500 samples</div>
+    </div>
+  </div>
+</div>
+
+<!-- ② 貢獻度 -->
+<div class="section" id="contribution">
+  <div class="section-title">② 媒體貢獻度分析</div>
+  <div class="grid-2">
+    <div class="chart-box">
+      <h3>各通路貢獻度（%）</h3>
+      <canvas id="chartContrib" height="350"></canvas>
+      <div class="source">貢獻度 = 各通路帶來的 KPI 增量 / 總媒體 KPI 增量</div>
+    </div>
+    <div class="chart-box">
+      <h3>花費佔比 vs 貢獻度佔比</h3>
+      <canvas id="chartSpendVsContrib" height="350"></canvas>
+      <div class="source">綠色 = 貢獻 > 花費（高效），紅色 = 貢獻 < 花費（低效）</div>
+    </div>
+  </div>
+</div>
+
+<!-- ③ ROI -->
+<div class="section" id="roi">
+  <div class="section-title">③ ROI 分析（含 95% 信賴區間）</div>
+  <div class="chart-box">
+    <h3>各通路 ROI 均值（每元花費帶來的 KPI 增量）</h3>
+    <canvas id="chartROI" height="400"></canvas>
+    <div class="source">誤差線 = 95% 信賴區間；ROI 越高代表每元花費效益越大</div>
+  </div>
+</div>
+
+<!-- ④ 效率分析 -->
+<div class="section" id="efficiency">
+  <div class="section-title">④ 效率分析（效率比 = 貢獻佔比 / 花費佔比）</div>
+  <div class="grid-2">
+    <div class="chart-box">
+      <h3>效率比（> 1 = 超效率，&lt; 1 = 低效率）</h3>
+      <canvas id="chartEfficiency" height="350"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>ROI vs 花費佔比（氣泡大小 = 貢獻度）</h3>
+      <canvas id="chartBubble" height="350"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ⑤ 縣市分析 -->
+<div class="section" id="geo">
+  <div class="section-title">⑤ 縣市層級分析（Geo-level 特有）</div>
+  <div class="chart-box" style="margin-bottom:24px">
+    <h3>各縣市 ROI 熱力圖（通路 × 縣市）</h3>
+    <canvas id="chartGeoHeatmap" height="500"></canvas>
+    <div class="source">顏色越深代表 ROI 越高；geo-level 模型可識別各縣市對廣告的反應差異</div>
+  </div>
+  <div class="section-title" style="font-size:16px; margin-top:32px">各縣市最佳通路</div>
+  <div class="geo-grid">
+
+    <div class="geo-card">
+      <div class="city-name">📍 CHQ</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">rtbhouseDailyWeightspend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">3.00837</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 CYC</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">rtbhouseDailyWeightspend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">3.41342</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 CYQ</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">rtbhouseDailyWeightspend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">2.86545</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 HCC</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">rtbhouseDailyWeightspend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">3.41744</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 HLQ</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">Google_Ads_East_18_HLQ_spend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">4.09283</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 HSQ</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">Google_Ads_North_6_HSQ_spend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">4.20833</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 ILQ</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">rtbhouseDailyWeightspend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">3.38287</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 KLC</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">Google_Ads_North_1_KLC_spend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">2.99009</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 KMQ</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">Google_Ads_Middle_20_KMQ_spend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">1.97355</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 KSC</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">rtbhouseDailyWeightspend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">3.53528</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 MLQ</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">rtbhouseDailyWeightspend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">3.64695</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 MZQ</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">rtbhouseDailyWeightspend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">1.10659</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 NTPC</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">Google_Ads_North_2_NTPC_spend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">3.36208</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 NTQ</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">rtbhouseDailyWeightspend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">2.64301</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 PHQ</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">rtbhouseDailyWeightspend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">1.28103</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 PTQ</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">Google_Ads_South_17_PTQ_spend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">3.65440</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 TCC</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">rtbhouseDailyWeightspend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">3.64852</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 TNC</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">rtbhouseDailyWeightspend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">3.58498</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 TPC</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">rtbhouseDailyWeightspend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">3.05775</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 TTQ</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">Google_Ads_East_18_TTQ_spend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">3.09072</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 TYC</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">rtbhouseDailyWeightspend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">3.49562</span>
+      </div>
+    </div>
+    <div class="geo-card">
+      <div class="city-name">📍 YLQ</div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最佳通路</span>
+        <span style="font-weight:600;color:var(--primary);font-size:11px">Google_Ads_Middle_11_YLQ_spend</span>
+      </div>
+      <div class="ch-row">
+        <span style="color:var(--muted)">最高 ROI</span>
+        <span style="font-weight:700;color:var(--green)">2.70975</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ⑥ 時間序列 -->
+<div class="section" id="timeseries">
+  <div class="section-title">⑥ 時間序列擬合（Actual vs Fitted）</div>
+  <div class="chart-box">
+    <h3>全國日 KPI：實際值 vs 模型預測值（含 95% CI）</h3>
+    <canvas id="chartTimeseries" height="300"></canvas>
+    <div class="source">藍色填色區域 = 95% 信賴區間；橘線 = 實際值；藍線 = 模型預測值</div>
+  </div>
+</div>
+
+<!-- ⑦ 通路明細 -->
+<div class="section" id="detail">
+  <div class="section-title">⑦ 通路明細表</div>
+  <div class="chart-box" style="overflow-x:auto">
+    <table>
+      <thead>
+        <tr>
+          <th>通路</th>
+          <th>總花費</th>
+          <th>花費佔比</th>
+          <th>KPI 貢獻</th>
+          <th>貢獻佔比</th>
+          <th>效率比</th>
+          <th>ROI 均值</th>
+          <th>ROI 95% CI</th>
+          <th>花費佔比條</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">rtbhouseDailyWeightspend</td>
+          <td>322.2K</td>
+          <td>19.4%</td>
+          <td>1.1M</td>
+          <td>50.7%</td>
+          <td><span class="badge badge-green">高效 2.62</span></td>
+          <td>3.28760</td>
+          <td style="font-size:11px">[0.94952, 5.49407]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:38.70598136029215%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">rakuya_fb_dpa_advance_allzone2_spend</td>
+          <td>681.4K</td>
+          <td>40.9%</td>
+          <td>324.4K</td>
+          <td>15.5%</td>
+          <td><span class="badge badge-red">低效 0.38</span></td>
+          <td>0.47602</td>
+          <td style="font-size:11px">[0.13571, 0.90278]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:81.85952770211196%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">criteoDailyWeightspend</td>
+          <td>352.5K</td>
+          <td>21.2%</td>
+          <td>116.9K</td>
+          <td>5.6%</td>
+          <td><span class="badge badge-red">低效 0.26</span></td>
+          <td>0.33150</td>
+          <td style="font-size:11px">[0.16253, 0.56982]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:42.345179916029224%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_North_2_NTPC_spend</td>
+          <td>29.2K</td>
+          <td>1.8%</td>
+          <td>93.8K</td>
+          <td>4.5%</td>
+          <td><span class="badge badge-green">高效 2.56</span></td>
+          <td>3.21449</td>
+          <td style="font-size:11px">[0.22491, 7.06236]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:3.5057652586096366%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_Middle_8_TCC_spend</td>
+          <td>38.1K</td>
+          <td>2.3%</td>
+          <td>84.3K</td>
+          <td>4.0%</td>
+          <td><span class="badge badge-green">高效 1.77</span></td>
+          <td>2.21311</td>
+          <td style="font-size:11px">[0.95778, 3.77034]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:4.578258793045113%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_South_15_KSC_spend</td>
+          <td>37.8K</td>
+          <td>2.3%</td>
+          <td>57.6K</td>
+          <td>2.8%</td>
+          <td><span class="badge badge-green">高效 1.22</span></td>
+          <td>1.52439</td>
+          <td style="font-size:11px">[0.14221, 2.92255]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:4.537186621228818%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_North_4_TYC_spend</td>
+          <td>24.5K</td>
+          <td>1.5%</td>
+          <td>42.7K</td>
+          <td>2.0%</td>
+          <td><span class="badge badge-green">高效 1.39</span></td>
+          <td>1.74123</td>
+          <td style="font-size:11px">[0.62020, 4.22778]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:2.944201653452907%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_South_17_PTQ_spend</td>
+          <td>9.4K</td>
+          <td>0.6%</td>
+          <td>29.6K</td>
+          <td>1.4%</td>
+          <td><span class="badge badge-green">高效 2.52</span></td>
+          <td>3.15545</td>
+          <td style="font-size:11px">[0.31804, 6.58312]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:1.1269395186477456%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_South_12_CYC_spend</td>
+          <td>12.2K</td>
+          <td>0.7%</td>
+          <td>27.3K</td>
+          <td>1.3%</td>
+          <td><span class="badge badge-green">高效 1.79</span></td>
+          <td>2.23828</td>
+          <td style="font-size:11px">[0.16358, 5.46847]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:1.4626292388400508%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_Middle_9_CHQ_spend</td>
+          <td>20.1K</td>
+          <td>1.2%</td>
+          <td>27.1K</td>
+          <td>1.3%</td>
+          <td><span class="badge badge-yellow">持平 1.08</span></td>
+          <td>1.34970</td>
+          <td style="font-size:11px">[0.17444, 2.16202]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:2.415753849754548%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_North_6_HSQ_spend</td>
+          <td>7.4K</td>
+          <td>0.4%</td>
+          <td>25.6K</td>
+          <td>1.2%</td>
+          <td><span class="badge badge-green">高效 2.77</span></td>
+          <td>3.47588</td>
+          <td style="font-size:11px">[0.39206, 6.04122]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:0.8841241979080838%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_North_0_TPC_spend</td>
+          <td>16.5K</td>
+          <td>1.0%</td>
+          <td>25.6K</td>
+          <td>1.2%</td>
+          <td><span class="badge badge-green">高效 1.24</span></td>
+          <td>1.55119</td>
+          <td style="font-size:11px">[0.22317, 4.40886]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:1.9800671470664617%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_Middle_11_YLQ_spend</td>
+          <td>8.9K</td>
+          <td>0.5%</td>
+          <td>20.6K</td>
+          <td>1.0%</td>
+          <td><span class="badge badge-green">高效 1.85</span></td>
+          <td>2.31959</td>
+          <td style="font-size:11px">[0.41806, 3.36132]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:1.068721288484808%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_Middle_10_NTQ_spend</td>
+          <td>8.7K</td>
+          <td>0.5%</td>
+          <td>19.6K</td>
+          <td>0.9%</td>
+          <td><span class="badge badge-green">高效 1.79</span></td>
+          <td>2.24155</td>
+          <td style="font-size:11px">[0.33231, 6.27404]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:1.0496968926227048%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_South_14_TNC_spend</td>
+          <td>33.0K</td>
+          <td>2.0%</td>
+          <td>18.6K</td>
+          <td>0.9%</td>
+          <td><span class="badge badge-red">低效 0.45</span></td>
+          <td>0.56259</td>
+          <td style="font-size:11px">[0.28431, 1.05096]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:3.966125421254%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_South_13_CYQ_spend</td>
+          <td>10.2K</td>
+          <td>0.6%</td>
+          <td>17.6K</td>
+          <td>0.8%</td>
+          <td><span class="badge badge-green">高效 1.38</span></td>
+          <td>1.73230</td>
+          <td style="font-size:11px">[0.86873, 2.74574]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:1.2198566834717017%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_North_1_KLC_spend</td>
+          <td>7.1K</td>
+          <td>0.4%</td>
+          <td>17.3K</td>
+          <td>0.8%</td>
+          <td><span class="badge badge-green">高效 1.95</span></td>
+          <td>2.44761</td>
+          <td style="font-size:11px">[0.17096, 5.06631]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:0.8482279559809581%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_East_18_TTQ_spend</td>
+          <td>6.7K</td>
+          <td>0.4%</td>
+          <td>16.8K</td>
+          <td>0.8%</td>
+          <td><span class="badge badge-green">高效 2.00</span></td>
+          <td>2.50241</td>
+          <td style="font-size:11px">[0.14154, 5.54708]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:0.8083662563178692%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_North_3_ILQ_spend</td>
+          <td>7.6K</td>
+          <td>0.5%</td>
+          <td>13.1K</td>
+          <td>0.6%</td>
+          <td><span class="badge badge-green">高效 1.38</span></td>
+          <td>1.72674</td>
+          <td style="font-size:11px">[0.43208, 4.34605]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:0.9145652945964875%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_East_18_HLQ_spend</td>
+          <td>4.3K</td>
+          <td>0.3%</td>
+          <td>12.4K</td>
+          <td>0.6%</td>
+          <td><span class="badge badge-green">高效 2.30</span></td>
+          <td>2.87915</td>
+          <td style="font-size:11px">[0.40491, 5.59506]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:0.5189874016594226%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">rakuya_fb_dpa_advance_allzone_ASC_Campaign2_spend</td>
+          <td>3.5K</td>
+          <td>0.2%</td>
+          <td>10.1K</td>
+          <td>0.5%</td>
+          <td><span class="badge badge-green">高效 2.31</span></td>
+          <td>2.90038</td>
+          <td style="font-size:11px">[0.26845, 6.21350]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:0.4185240271108849%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_North_8_HCC_spend</td>
+          <td>6.3K</td>
+          <td>0.4%</td>
+          <td>9.9K</td>
+          <td>0.5%</td>
+          <td><span class="badge badge-green">高效 1.26</span></td>
+          <td>1.58080</td>
+          <td style="font-size:11px">[0.29331, 2.58469]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:0.7538190864741436%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_Middle_7_MLQ_spend</td>
+          <td>9.4K</td>
+          <td>0.6%</td>
+          <td>9.0K</td>
+          <td>0.4%</td>
+          <td><span class="badge badge-red">低效 0.76</span></td>
+          <td>0.95122</td>
+          <td style="font-size:11px">[0.14495, 2.78986]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:1.1345707677929462%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_Middle_20_KMQ_spend</td>
+          <td>4.0K</td>
+          <td>0.2%</td>
+          <td>5.4K</td>
+          <td>0.3%</td>
+          <td><span class="badge badge-yellow">持平 1.07</span></td>
+          <td>1.34205</td>
+          <td style="font-size:11px">[0.14730, 3.05424]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:0.4809014755380063%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size:11px;max-width:200px;word-break:break-all">Google_Ads_South_8_PHQ_spend</td>
+          <td>3.9K</td>
+          <td>0.2%</td>
+          <td>3.0K</td>
+          <td>0.1%</td>
+          <td><span class="badge badge-red">低效 0.60</span></td>
+          <td>0.75412</td>
+          <td style="font-size:11px">[0.34603, 1.52250]</td>
+          <td style="min-width:80px">
+            <div class="bar-bg"><div class="bar-fill" style="width:0.4720221917081648%;background:#3b82f6"></div></div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ⑧ 洞察建議 -->
+<div class="section" id="insights">
+  <div class="section-title">⑧ 關鍵洞察與建議</div>
+
+  <div class="insight-box">
+    <h4>🏆 貢獻度前三大通路</h4>
+    <p>
+      <strong>rtbhouseDailyWeightspend</strong>（貢獻 50.7%）、
+      <strong>rakuya_fb_dpa_advance_allzone2_spend</strong>（貢獻 15.5%）、
+      <strong>criteoDailyWeightspend</strong>（貢獻 5.6%）
+      合計貢獻 71.9% 的媒體效益，是目前最重要的三個通路。
+    </p>
+  </div>
+
+  <div class="insight-box">
+    <h4>✅ 高效率通路（效率比 ≥ 1.1，可考慮增加預算）</h4>
+    <p>
+      <strong>rtbhouseDailyWeightspend</strong>（效率比 2.62）, <strong>Google_Ads_North_2_NTPC_spend</strong>（效率比 2.56）, <strong>Google_Ads_Middle_8_TCC_spend</strong>（效率比 1.77）, <strong>Google_Ads_South_15_KSC_spend</strong>（效率比 1.22）, <strong>Google_Ads_North_4_TYC_spend</strong>（效率比 1.39）
+      這些通路的貢獻佔比高於花費佔比，代表邊際效益較高，可優先考慮增加預算。
+    </p>
+  </div>
+
+  <div class="insight-box" style="background:linear-gradient(135deg,#fff1f2,#ffe4e6);border-color:#fecdd3">
+    <h4>⚠️ 低效率通路（效率比 &lt; 0.9，建議審視預算配置）</h4>
+    <p>
+      <strong>rakuya_fb_dpa_advance_allzone2_spend</strong>（效率比 0.38）, <strong>criteoDailyWeightspend</strong>（效率比 0.26）, <strong>Google_Ads_South_14_TNC_spend</strong>（效率比 0.45）, <strong>Google_Ads_Middle_7_MLQ_spend</strong>（效率比 0.76）, <strong>Google_Ads_South_8_PHQ_spend</strong>（效率比 0.60）
+      這些通路的花費佔比高於貢獻佔比，可能存在邊際效益遞減，建議重新審視預算配置。
+    </p>
+  </div>
+
+  <div class="insight-box">
+    <h4>💡 ROI 最高通路（每元花費效益最大）</h4>
+    <p>
+      <strong>Google_Ads_North_6_HSQ_spend</strong>（ROI=3.47588）, <strong>rtbhouseDailyWeightspend</strong>（ROI=3.28760）, <strong>Google_Ads_North_2_NTPC_spend</strong>（ROI=3.21449）
+      這些通路的每元花費帶來的 KPI 增量最高，但需注意目前花費量是否已達飽和點。
+    </p>
+  </div>
+  <div class="insight-box">
+    <h4>🗺️ Geo-level 模型的特殊價值</h4>
+    <p>
+      本模型利用 22 個縣市的 Panel Data，為每個縣市估計獨立的媒體效益係數（beta），
+      可以識別各縣市對廣告的反應差異。請參考「縣市分析」區塊，
+      針對 ROI 較高的縣市優先配置預算，或針對反應較弱的縣市調整廣告素材策略。
+    </p>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<footer>
+  Google Meridian MMM 分析報告 · Geo-level 22 縣市 ·
+  資料期間 2026-03-01 ~ 2026-04-30 ·
+  R² = -956147.3248
+</footer>
+
+<script>
+const COLORS = ["#2563EB", "#DC2626", "#16A34A", "#D97706", "#7C3AED", "#0891B2", "#BE185D", "#65A30D", "#EA580C", "#6366F1", "#0D9488", "#B45309", "#9333EA", "#0284C7", "#C026D3", "#15803D", "#B91C1C", "#1D4ED8", "#A16207", "#7E22CE", "#0E7490", "#92400E", "#6D28D9", "#047857", "#991B1B"];
+function color(i) { return COLORS[i % COLORS.length]; }
+
+// ② 貢獻度橫條圖
+const contribData = [50.74391174316406, 15.539108276367188, 5.597954273223877, 4.493834018707275, 4.0404205322265625, 2.757967710494995, 2.044275999069214, 1.4180350303649902, 1.3055100440979004, 1.3002099990844727, 1.2254643440246582, 1.22484290599823, 0.9885677099227905, 0.9383332133293152, 0.8897849321365356, 0.8426796793937683, 0.8278794288635254, 0.8066556453704834, 0.6297542452812195, 0.5958955883979797, 0.48407092690467834, 0.47518759965896606, 0.43035590648651123, 0.2573642134666443, 0.14194010198116302];
+const contribLabels = ["rtbhouseDailyWeightspend", "rakuya_fb_dpa_advance_allzone2", "criteoDailyWeightspend", "Google_Ads_North_2_NTPC_spend", "Google_Ads_Middle_8_TCC_spend", "Google_Ads_South_15_KSC_spend", "Google_Ads_North_4_TYC_spend", "Google_Ads_South_17_PTQ_spend", "Google_Ads_South_12_CYC_spend", "Google_Ads_Middle_9_CHQ_spend", "Google_Ads_North_6_HSQ_spend", "Google_Ads_North_0_TPC_spend", "Google_Ads_Middle_11_YLQ_spend", "Google_Ads_Middle_10_NTQ_spend", "Google_Ads_South_14_TNC_spend", "Google_Ads_South_13_CYQ_spend", "Google_Ads_North_1_KLC_spend", "Google_Ads_East_18_TTQ_spend", "Google_Ads_North_3_ILQ_spend", "Google_Ads_East_18_HLQ_spend", "rakuya_fb_dpa_advance_allzone_", "Google_Ads_North_8_HCC_spend", "Google_Ads_Middle_7_MLQ_spend", "Google_Ads_Middle_20_KMQ_spend", "Google_Ads_South_8_PHQ_spend"];
+new Chart(document.getElementById('chartContrib'), {
+  type: 'bar',
+  data: {
+    labels: contribLabels,
+    datasets: [{ label: '貢獻度 (%)', data: contribData,
+      backgroundColor: contribLabels.map((_,i) => color(i)), borderRadius: 4 }]
+  },
+  options: { indexAxis: 'y', responsive: true,
+    plugins: { legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ${ctx.raw.toFixed(2)}%` } } },
+    scales: { x: { ticks: { callback: v => v+'%' } } } }
+});
+
+// ② 花費 vs 貢獻
+const spendPct   = [19.352990680146075, 40.92976385105598, 21.172589958014612, 1.7528826293048183, 2.2891293965225565, 2.268593310614409, 1.4721008267264535, 0.5634697593238728, 0.7313146194200254, 1.207876924877274, 0.4420620989540419, 0.9900335735332308, 0.534360644242404, 0.5248484463113524, 1.983062710627, 0.6099283417358509, 0.42411397799047906, 0.4041831281589346, 0.45728264729824375, 0.2594937008297113, 0.20926201355544244, 0.3769095432370718, 0.5672853838964731, 0.24045073776900314, 0.2360110958540824];
+new Chart(document.getElementById('chartSpendVsContrib'), {
+  type: 'bar',
+  data: {
+    labels: contribLabels,
+    datasets: [
+      { label: '花費佔比 (%)', data: spendPct,   backgroundColor: 'rgba(59,130,246,0.7)', borderRadius: 3 },
+      { label: '貢獻佔比 (%)', data: contribData, backgroundColor: 'rgba(22,163,74,0.7)',  borderRadius: 3 },
+    ]
+  },
+  options: { indexAxis: 'y', responsive: true,
+    plugins: { tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toFixed(2)}%` } } },
+    scales: { x: { ticks: { callback: v => v+'%' } } } }
+});
+
+// ③ ROI 橫條圖（含誤差線）
+const roiMean = [3.28759765625, 0.47602152824401855, 0.33150070905685425, 3.214494228363037, 2.213113307952881, 1.524391531944275, 1.7412331104278564, 3.1554548740386963, 2.238276958465576, 1.349704623222351, 3.4758808612823486, 1.5511869192123413, 2.3195910453796387, 2.2415502071380615, 0.5625926852226257, 1.7322980165481567, 2.4476101398468018, 2.5024092197418213, 1.7267417907714844, 2.8791496753692627, 2.9003801345825195, 1.580804705619812, 0.9512169361114502, 1.3420469760894775, 0.7541163563728333];
+const roiLo   = [0.9495226144790649, 0.13571012020111084, 0.16252952814102173, 0.22491207718849182, 0.9577828049659729, 0.142209991812706, 0.6202046871185303, 0.31804192066192627, 0.16357602179050446, 0.1744370013475418, 0.3920634984970093, 0.22316747903823853, 0.41806086897850037, 0.33231455087661743, 0.2843081057071686, 0.8687348961830139, 0.170959934592247, 0.14153505861759186, 0.4320794641971588, 0.4049089252948761, 0.2684471011161804, 0.29331129789352417, 0.1449456363916397, 0.14729607105255127, 0.3460303843021393];
+const roiHi   = [5.4940667152404785, 0.9027788043022156, 0.5698207020759583, 7.062356472015381, 3.770343065261841, 2.9225502014160156, 4.227775573730469, 6.5831193923950195, 5.468470096588135, 2.1620233058929443, 6.0412163734436035, 4.408864974975586, 3.361316680908203, 6.27404260635376, 1.0509629249572754, 2.745741844177246, 5.066310882568359, 5.547077655792236, 4.3460540771484375, 5.595064640045166, 6.213504314422607, 2.5846924781799316, 2.789856195449829, 3.05424427986145, 1.5224963426589966];
+new Chart(document.getElementById('chartROI'), {
+  type: 'bar',
+  data: {
+    labels: contribLabels,
+    datasets: [{
+      label: 'ROI 均值',
+      data: roiMean,
+      backgroundColor: contribLabels.map((_,i) => color(i)),
+      borderRadius: 4,
+      error: roiMean.map((v,i) => [v - roiLo[i], roiHi[i] - v]),
+    }]
+  },
+  options: {
+    indexAxis: 'y', responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` ROI: ${ctx.raw.toFixed(5)}  95%CI: [${roiLo[ctx.dataIndex].toFixed(5)}, ${roiHi[ctx.dataIndex].toFixed(5)}]` } }
+    },
+    scales: { x: { ticks: { callback: v => v.toFixed(4) } } }
+  }
+});
+
+// ④ 效率比
+const effData = [2.6220191264289316, 0.37965301556876074, 0.26439629169982015, 2.563682198649363, 1.7650467993263925, 1.2157171077926157, 1.3886793268966007, 2.516612438794259, 1.785155105037684, 1.076442443382347, 2.7721542272062525, 1.2371730882370795, 1.8500009349010618, 1.7878174205254285, 0.4486922793118745, 1.3816043753262315, 1.9520210422347835, 1.9957676835427185, 1.3771662564287634, 2.296377767663999, 2.313228739166939, 1.260747029566742, 0.7586232804806695, 1.0703406658310317, 0.6014128083824993];
+new Chart(document.getElementById('chartEfficiency'), {
+  type: 'bar',
+  data: {
+    labels: contribLabels,
+    datasets: [{
+      label: '效率比',
+      data: effData,
+      backgroundColor: effData.map(v => v >= 1.1 ? 'rgba(22,163,74,0.75)' : v >= 0.9 ? 'rgba(217,119,6,0.75)' : 'rgba(220,38,38,0.75)'),
+      borderRadius: 4
+    }]
+  },
+  options: {
+    indexAxis: 'y', responsive: true,
+    plugins: { legend: { display: false },
+      tooltip: { callbacks: { label: ctx => ` 效率比: ${ctx.raw.toFixed(2)}` } } },
+    scales: {
+      x: { ticks: { callback: v => v.toFixed(1) } },
+      y: { ticks: { font: { size: 11 } } }
+    }
+  }
+});
+
+// ④ 氣泡圖
+const bubbleData = [{"x": 19.352990680146075, "y": 3.28759765625, "r": 76.1158676147461}, {"x": 40.92976385105598, "y": 0.47602152824401855, "r": 23.30866241455078}, {"x": 21.172589958014612, "y": 0.33150070905685425, "r": 8.396931409835815}, {"x": 1.7528826293048183, "y": 3.214494228363037, "r": 6.740751028060913}, {"x": 2.2891293965225565, "y": 2.213113307952881, "r": 6.060630798339844}, {"x": 2.268593310614409, "y": 1.524391531944275, "r": 4.136951565742493}, {"x": 1.4721008267264535, "y": 1.7412331104278564, "r": 3.066413998603821}, {"x": 0.5634697593238728, "y": 3.1554548740386963, "r": 3}, {"x": 0.7313146194200254, "y": 2.238276958465576, "r": 3}, {"x": 1.207876924877274, "y": 1.349704623222351, "r": 3}, {"x": 0.4420620989540419, "y": 3.4758808612823486, "r": 3}, {"x": 0.9900335735332308, "y": 1.5511869192123413, "r": 3}, {"x": 0.534360644242404, "y": 2.3195910453796387, "r": 3}, {"x": 0.5248484463113524, "y": 2.2415502071380615, "r": 3}, {"x": 1.983062710627, "y": 0.5625926852226257, "r": 3}, {"x": 0.6099283417358509, "y": 1.7322980165481567, "r": 3}, {"x": 0.42411397799047906, "y": 2.4476101398468018, "r": 3}, {"x": 0.4041831281589346, "y": 2.5024092197418213, "r": 3}, {"x": 0.45728264729824375, "y": 1.7267417907714844, "r": 3}, {"x": 0.2594937008297113, "y": 2.8791496753692627, "r": 3}, {"x": 0.20926201355544244, "y": 2.9003801345825195, "r": 3}, {"x": 0.3769095432370718, "y": 1.580804705619812, "r": 3}, {"x": 0.5672853838964731, "y": 0.9512169361114502, "r": 3}, {"x": 0.24045073776900314, "y": 1.3420469760894775, "r": 3}, {"x": 0.2360110958540824, "y": 0.7541163563728333, "r": 3}];
+new Chart(document.getElementById('chartBubble'), {
+  type: 'bubble',
+  data: {
+    datasets: contribLabels.map((label, i) => ({
+      label, data: [bubbleData[i]],
+      backgroundColor: color(i) + 'aa',
+      borderColor: color(i),
+    }))
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: 花費${ctx.raw.x.toFixed(1)}% ROI=${ctx.raw.y.toFixed(5)}` } }
+    },
+    scales: {
+      x: { title: { display: true, text: '花費佔比 (%)' } },
+      y: { title: { display: true, text: 'ROI 均值' } }
+    }
+  }
+});
+
+// ⑥ 時間序列
+const tsLabels  = ["2026-03-01", "2026-03-02", "2026-03-03", "2026-03-04", "2026-03-05", "2026-03-06", "2026-03-07", "2026-03-08", "2026-03-09", "2026-03-10", "2026-03-11", "2026-03-12", "2026-03-13", "2026-03-14", "2026-03-15", "2026-03-16", "2026-03-17", "2026-03-18", "2026-03-19", "2026-03-20", "2026-03-21", "2026-03-22", "2026-03-23", "2026-03-24", "2026-03-25", "2026-03-26", "2026-03-27", "2026-03-28", "2026-03-29", "2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-04", "2026-04-05", "2026-04-06", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-11", "2026-04-12", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-18", "2026-04-19", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-25", "2026-04-26", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30"];
+const tsActual  = [352.96130000000005, 327.964, 266.9708, 278.9694, 357.96079999999995, 314.9655, 286.9686, 336.9631, 328.964, 257.9717, 291.96810000000005, 301.967, 300.967, 320.9648, 327.964, 309.966, 275.9698, 342.9624, 293.9678, 321.9647, 320.9648, 336.9631, 325.9643, 326.96419999999995, 352.96130000000005, 306.9664, 303.9667, 310.9659, 333.9635, 281.9691, 275.9698, 294.96770000000004, 264.971, 301.967, 313.9656, 308.96619999999996, 363.9601, 307.96629999999993, 259.97159999999997, 313.9656, 262.9712, 330.96369999999996, 323.96450000000004, 301.967, 288.96829999999994, 266.9708, 305.96649999999994, 304.9666, 309.966, 373.959, 238.97379999999995, 310.9659, 274.9699, 264.971, 312.9658, 417.95419999999996, 335.9632000000001, 434.95240000000007, 277.9695, 263.97099999999995, 285.96869999999996];
+const tsFitted  = [19147.001953125, 24447.494140625, 32036.333984375, 36076.3203125, 38091.02734375, 36982.04296875, 33583.83984375, 37600.96875, 42310.89453125, 42348.68359375, 40535.35546875, 40445.35546875, 41665.69140625, 44883.69921875, 43439.78515625, 43413.296875, 44758.12109375, 41877.0390625, 40914.234375, 41070.40625, 36521.859375, 38742.7578125, 38062.109375, 40377.1484375, 39666.62890625, 39331.8125, 40951.765625, 41596.609375, 40058.3125, 39608.96484375, 36046.140625, 35929.828125, 35864.6953125, 39732.25390625, 36872.69140625, 36324.98828125, 36540.76953125, 34668.2578125, 35666.66796875, 36957.265625, 34813.796875, 36183.625, 36375.78515625, 37410.359375, 38766.5625, 34723.875, 30585.0, 28082.25, 26608.65234375, 23987.515625, 25909.05859375, 24031.064453125, 24646.822265625, 23549.150390625, 22666.98828125, 24633.76171875, 22787.23046875, 22482.017578125, 23581.978515625, 18662.8046875, 20989.31640625];
+const tsFitLo   = [10566.2041015625, 12051.18359375, 18000.173828125, 19626.490234375, 19476.228515625, 17853.54296875, 15913.4794921875, 17193.67578125, 20039.923828125, 20232.451171875, 19920.333984375, 19098.720703125, 20752.607421875, 23838.5625, 23040.70703125, 23931.265625, 28110.90234375, 24056.380859375, 21369.724609375, 21640.08203125, 19772.15625, 20452.787109375, 19246.453125, 19632.0234375, 19313.8046875, 18722.220703125, 19817.453125, 21179.953125, 20141.8125, 19976.66015625, 17918.76953125, 18616.8046875, 18572.228515625, 21830.841796875, 20895.212890625, 20523.880859375, 20262.400390625, 18452.482421875, 17908.576171875, 17966.873046875, 16712.505859375, 18325.548828125, 18944.875, 19268.392578125, 21024.4765625, 17898.15234375, 17623.884765625, 15976.3916015625, 16542.96484375, 14998.3525390625, 15467.3662109375, 15268.2509765625, 19107.3515625, 15388.1923828125, 13875.9560546875, 16327.6884765625, 14391.2744140625, 16735.083984375, 16856.830078125, 13719.67578125, 13388.75];
+const tsFitHi   = [27070.041015625, 35958.13671875, 43663.4453125, 49110.3828125, 54140.30859375, 49400.1015625, 44304.67578125, 51371.73046875, 56050.38671875, 56604.44140625, 49335.84375, 54120.12109375, 56208.5078125, 58653.32421875, 56714.7578125, 60381.26171875, 55316.9609375, 54521.3203125, 52252.33984375, 52116.39453125, 46655.48046875, 49509.1484375, 50333.09375, 53506.96484375, 51784.921875, 53185.67578125, 55116.99609375, 58074.50390625, 53927.00390625, 51923.5703125, 46104.62890625, 45703.1875, 46221.7578125, 47027.33203125, 44279.16015625, 45214.36328125, 47009.68359375, 45104.6796875, 45347.390625, 46863.71484375, 44004.1484375, 46778.6171875, 45348.51953125, 48825.3125, 52694.890625, 49317.2109375, 39692.546875, 34447.9375, 32286.85546875, 27724.337890625, 32511.419921875, 27729.7421875, 27634.11328125, 27821.484375, 26717.376953125, 30087.13671875, 27192.685546875, 26212.0078125, 31561.29296875, 23051.515625, 23961.306640625];
+new Chart(document.getElementById('chartTimeseries'), {
+  type: 'line',
+  data: {
+    labels: tsLabels,
+    datasets: [
+      { label: '95% CI 上界', data: tsFitHi, borderColor: 'transparent',
+         backgroundColor: 'rgba(59,130,246,0.15)', fill: '+1', pointRadius: 0, tension: 0.3 },
+      { label: '95% CI 下界', data: tsFitLo, borderColor: 'transparent',
+         backgroundColor: 'rgba(59,130,246,0.15)', fill: false, pointRadius: 0, tension: 0.3 },
+      { label: '模型預測值', data: tsFitted, borderColor: '#2563eb', borderWidth: 2,
+         backgroundColor: 'transparent', pointRadius: 0, tension: 0.3 },
+      { label: '實際值', data: tsActual, borderColor: '#ea580c', borderWidth: 2,
+         backgroundColor: 'transparent', pointRadius: 3, tension: 0.3 },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { tooltip: { mode: 'index', intersect: false } },
+    scales: { y: { title: { display: true, text: '全國日 KPI' } } }
+  }
+});
+
+// Nav active
+const sections = document.querySelectorAll('.section');
+const navLinks = document.querySelectorAll('nav a');
+window.addEventListener('scroll', () => {
+  let cur = '';
+  sections.forEach(s => { if (window.scrollY >= s.offsetTop - 100) cur = s.id; });
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#'+cur);
+  });
+});
+</script>
+</body>
+</html>
